@@ -23,7 +23,7 @@ type EzAPI struct {
 //Rspn - contains response data
 type Rspn struct {
 	Header     http.Header
-	Body       string
+	Body       []byte
 	StatusCode int
 }
 
@@ -133,7 +133,7 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	}
 	rspn = Rspn{
 		StatusCode: apiResp.StatusCode,
-		Body:       string(respBody),
+		Body:       respBody,
 		Header:     apiResp.Header,
 	}
 

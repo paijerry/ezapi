@@ -124,7 +124,7 @@ URLQuery add urlquery into url
 ``` go
 type Rspn struct {
     Header     http.Header
-    Body       string
+    Body       []byte
     StatusCode int
 }
 ```

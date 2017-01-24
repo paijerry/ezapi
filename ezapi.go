@@ -27,7 +27,7 @@ type Rspn struct {
 	StatusCode int
 }
 
-//New create an api object
+//New create an EzAPI object
 func New() *EzAPI {
 	return &EzAPI{}
 }
@@ -45,13 +45,13 @@ func (ez *EzAPI) Header(header http.Header) *EzAPI {
 	return ez
 }
 
-//Form add form("application/x-www-form-urlencoded") by a url.Value object ("Content-Type", "application/x-www-form-urlencoded")
+//Form add form("application/x-www-form-urlencoded") by a url.Values object ("Content-Type", "application/x-www-form-urlencoded")
 func (ez *EzAPI) Form(form url.Values) *EzAPI {
 	ez.xwww = true
 	return ez.FormData(form)
 }
 
-//FormData add formdata by a url.Value object (no Content-Type)
+//FormData add formdata by a url.Values object (no Content-Type)
 func (ez *EzAPI) FormData(form url.Values) *EzAPI {
 	ez.form = url.Values{}
 

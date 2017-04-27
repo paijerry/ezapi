@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 //EzAPI is the main struct of this package
@@ -18,6 +19,7 @@ type EzAPI struct {
 	json     []byte
 	url      string
 	xwww     bool
+	timeout  time.Duration
 }
 
 //Rspn - contains response data
@@ -89,7 +91,15 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	case ez.url == "":
 		return rspn, errors.New("NO URL")
 	}
-	client := &http.Client{}
+
+	// connention reset by peer
+	transport := http.Transport{
+		DisableKeepAlives: true,
+	}
+	client := &http.Client{
+		Timeout:   time.Duration(5 * time.Second),
+		Transport: &transport,
+	}
 
 	urlQuery, err := url.QueryUnescape(ez.urlquery.Encode())
 
@@ -109,9 +119,11 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	default:
 		req, err = http.NewRequest(method, urlStr, strings.NewReader(ez.form.Encode()))
 	}
+
 	if err != nil {
 		return rspn, err
 	}
+
 	if ez.xwww == true {
 		req.Header.Add("Content-Type", `application/x-www-form-urlencoded`)
 	}

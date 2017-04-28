@@ -93,12 +93,12 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	}
 
 	// connention reset by peer
-	transport := http.Transport{
-		DisableKeepAlives: true,
-	}
+	// transport := http.Transport{
+	// 	DisableKeepAlives: true,
+	// }
 	client := &http.Client{
-		Timeout:   time.Duration(5 * time.Second),
-		Transport: &transport,
+		Timeout: time.Duration(5 * time.Second),
+		//Transport: &transport,
 	}
 
 	urlQuery, err := url.QueryUnescape(ez.urlquery.Encode())

@@ -83,6 +83,12 @@ func (ez *EzAPI) URL(url string) *EzAPI {
 	return ez
 }
 
+//TimeOut set timeout
+func (ez *EzAPI) TimeOut(timeout time.Duration) *EzAPI {
+	ez.timeout = timeout
+	return ez
+}
+
 //Do the http request
 func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	switch {
@@ -96,9 +102,14 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	// transport := http.Transport{
 	// 	DisableKeepAlives: true,
 	// }
+	var timeout time.Duration
+	if ez.timeout == 0 {
+		timeout = 10
+	}
+
 	client := &http.Client{
-		Timeout: time.Duration(5 * time.Second),
-		//Transport: &transport,
+		Timeout: time.Duration(timeout * time.Second),
+		// Transport: &transport,
 	}
 
 	urlQuery, err := url.QueryUnescape(ez.urlquery.Encode())

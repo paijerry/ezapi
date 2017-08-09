@@ -4,9 +4,13 @@ package ezapi
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -19,7 +23,8 @@ type EzAPI struct {
 	json     []byte
 	url      string
 	xwww     bool
-	timeout  time.Duration
+	timeout  int64
+	filepath []string
 }
 
 //Rspn - contains response data
@@ -34,6 +39,12 @@ func New() *EzAPI {
 	return &EzAPI{}
 }
 
+//URL set url
+func (ez *EzAPI) URL(url string) *EzAPI {
+	ez.url = url
+	return ez
+}
+
 //Header add head by a http.Header object
 func (ez *EzAPI) Header(header http.Header) *EzAPI {
 	ez.header = http.Header{}
@@ -41,9 +52,7 @@ func (ez *EzAPI) Header(header http.Header) *EzAPI {
 		for _, v2 := range v {
 			ez.header.Add(k, v2)
 		}
-
 	}
-
 	return ez
 }
 
@@ -56,7 +65,6 @@ func (ez *EzAPI) Form(form url.Values) *EzAPI {
 //FormData add formdata by a url.Values object (no Content-Type)
 func (ez *EzAPI) FormData(form url.Values) *EzAPI {
 	ez.form = url.Values{}
-
 	for k, v := range form {
 		for _, v2 := range v {
 			ez.form.Add(k, v2)
@@ -77,14 +85,14 @@ func (ez *EzAPI) URLQuery(urlquery url.Values) *EzAPI {
 	return ez
 }
 
-//URL set url
-func (ez *EzAPI) URL(url string) *EzAPI {
-	ez.url = url
+// Upload -
+func (ez *EzAPI) Upload(filePath string) *EzAPI {
+	ez.filepath = append(ez.filepath, filePath)
 	return ez
 }
 
 //TimeOut set timeout
-func (ez *EzAPI) TimeOut(timeout time.Duration) *EzAPI {
+func (ez *EzAPI) TimeOut(timeout int64) *EzAPI {
 	ez.timeout = timeout
 	return ez
 }
@@ -102,18 +110,16 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	// transport := http.Transport{
 	// 	DisableKeepAlives: true,
 	// }
-	var timeout time.Duration
-	if ez.timeout == 0 {
-		timeout = 10
-	}
 
+	if ez.timeout == 0 {
+		ez.timeout = 10
+	}
 	client := &http.Client{
-		Timeout: time.Duration(timeout * time.Second),
+		Timeout: time.Duration(ez.timeout) * time.Second,
 		// Transport: &transport,
 	}
 
 	urlQuery, err := url.QueryUnescape(ez.urlquery.Encode())
-
 	if err != nil {
 		return rspn, err
 	}
@@ -122,22 +128,41 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	var req *http.Request
 
 	switch {
-	case method == "GET":
+	case method == "GET": // GET
 		req, err = http.NewRequest(method, urlStr, nil)
-	case ez.json != nil:
+		if err != nil {
+			return rspn, err
+		}
+	case ez.json != nil: // json
 		req, err = http.NewRequest(method, urlStr, bytes.NewBuffer(ez.json))
+		if err != nil {
+			return rspn, err
+		}
 		req.Header.Add("Content-Type", `application/json`)
-	default:
+	case ez.xwww: // x-www-form-urlencoded
 		req, err = http.NewRequest(method, urlStr, strings.NewReader(ez.form.Encode()))
-	}
-
-	if err != nil {
-		return rspn, err
-	}
-
-	if ez.xwww == true {
+		if err != nil {
+			return rspn, err
+		}
 		req.Header.Add("Content-Type", `application/x-www-form-urlencoded`)
+	default: // form-data
+
+		// form-data: Writer
+		var cType string
+		var bodyBuf *bytes.Buffer
+		cType, bodyBuf, err = formData(ez.form, ez.filepath)
+		if err != nil {
+			return
+		}
+
+		req, err = http.NewRequest(method, urlStr, bodyBuf)
+		if err != nil {
+			return rspn, err
+		}
+
+		req.Header.Set("Content-Type", cType)
 	}
+
 	for k, v := range ez.header {
 		for _, v2 := range v {
 			req.Header.Add(k, v2)
@@ -161,4 +186,49 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	}
 
 	return rspn, err
+}
+
+func formData(form url.Values, fileList []string) (cType string, bodyBuf *bytes.Buffer, err error) {
+	bodyBuf = &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(bodyBuf)
+	var fileWriter, fw io.Writer
+
+	// Text form-data
+	for k, v := range form {
+		if fw, err = bodyWriter.CreateFormField(k); err != nil {
+			return
+		}
+		for i := 0; i < len(v); i++ {
+			if _, err = fw.Write([]byte(v[i])); err != nil {
+				return
+			}
+		}
+	}
+
+	// File form-data
+	for i := 0; i < len(fileList); i++ {
+		fileWriter, err = bodyWriter.CreateFormFile(fileList[i], fileList[i])
+		if err != nil {
+			fmt.Println("error writing to buffer")
+			return
+		}
+
+		// open file handle
+		fh, err2 := os.Open(fileList[i])
+		if err2 != nil {
+			fmt.Println("error opening file")
+			return
+		}
+
+		//iocopy
+		_, err2 = io.Copy(fileWriter, fh)
+		if err2 != nil {
+			return
+		}
+	}
+
+	cType = bodyWriter.FormDataContentType()
+	bodyWriter.Close()
+
+	return
 }

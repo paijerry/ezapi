@@ -2,13 +2,13 @@
 
 # ezapi
 
-# Install
-`go get -u -v "github.com/paijerry/ezapi"`
-
 `import "github.com/paijerry/ezapi"`
 
 * [Overview](#pkg-overview)
 * [Index](#pkg-index)
+
+# Install
+`go get -u -v "github.com/paijerry/ezapi"`
 
 ## <a name="pkg-overview">Overview</a>
 Package ezapi can help you call api easier

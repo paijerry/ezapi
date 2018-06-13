@@ -1,6 +1,10 @@
 
 
 # ezapi
+
+# Install
+`go get -u -v "github.com/paijerry/ezapi"`
+
 `import "github.com/paijerry/ezapi"`
 
 * [Overview](#pkg-overview)

@@ -95,9 +95,6 @@ func (ez *EzAPI) Upload(filePath string) *EzAPI {
 
 //TimeOut set timeout
 func (ez *EzAPI) TimeOut(timeout time.Duration) *EzAPI {
-	if timeout == 0 {
-		timeout = 10 * time.Second
-	}
 	ez.timeout = timeout
 	return ez
 }
@@ -162,6 +159,9 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	}
 
 	// timeout context
+	if ez.timeout == 0 {
+		ez.timeout = 10 * time.Second
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), ez.timeout)
 	defer cancel()
 	req = req.WithContext(ctx)

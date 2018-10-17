@@ -3,10 +3,12 @@ package ezapi
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -23,7 +25,7 @@ type EzAPI struct {
 	json     []byte
 	url      string
 	xwww     bool
-	timeout  int64
+	timeout  time.Duration
 	filepath []string
 }
 
@@ -92,7 +94,10 @@ func (ez *EzAPI) Upload(filePath string) *EzAPI {
 }
 
 //TimeOut set timeout
-func (ez *EzAPI) TimeOut(timeout int64) *EzAPI {
+func (ez *EzAPI) TimeOut(timeout time.Duration) *EzAPI {
+	if timeout == 0 {
+		timeout = 10 * time.Second
+	}
 	ez.timeout = timeout
 	return ez
 }
@@ -104,19 +109,6 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 		return rspn, errors.New("NO METHOD")
 	case ez.url == "":
 		return rspn, errors.New("NO URL")
-	}
-
-	// connention reset by peer
-	// transport := http.Transport{
-	// 	DisableKeepAlives: true,
-	// }
-
-	if ez.timeout == 0 {
-		ez.timeout = 10
-	}
-	client := &http.Client{
-		Timeout: time.Duration(ez.timeout) * time.Second,
-		// Transport: &transport,
 	}
 
 	urlQuery, err := url.QueryUnescape(ez.urlquery.Encode())
@@ -169,11 +161,31 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 		}
 	}
 
-	apiResp, err := client.Do(req)
+	// timeout context
+	ctx, cancel := context.WithTimeout(context.Background(), ez.timeout)
+	defer cancel()
+	req = req.WithContext(ctx)
+
+	apiResp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return rspn, err
 	}
-	defer apiResp.Body.Close()
+	defer func() {
+		if err.Error() == context.DeadlineExceeded.Error() {
+			return
+		}
+
+		_, err = io.Copy(ioutil.Discard, apiResp.Body)
+		if err != nil {
+			log.Printf("%+v", err)
+			return
+		}
+		err = apiResp.Body.Close()
+		if err != nil {
+			log.Printf("%+v", err)
+			return
+		}
+	}()
 
 	respBody, err := ioutil.ReadAll(apiResp.Body)
 	if err != nil {

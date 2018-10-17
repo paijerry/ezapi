@@ -127,13 +127,13 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 		if err != nil {
 			return rspn, err
 		}
-		req.Header.Add("Content-Type", `application/json`)
+		req.Header.Set("Content-Type", `application/json`)
 	case ez.xwww: // x-www-form-urlencoded
 		req, err = http.NewRequest(method, urlStr, strings.NewReader(ez.form.Encode()))
 		if err != nil {
 			return rspn, err
 		}
-		req.Header.Add("Content-Type", `application/x-www-form-urlencoded`)
+		req.Header.Set("Content-Type", `application/x-www-form-urlencoded`)
 	default: // form-data
 
 		// form-data: Writer
@@ -154,7 +154,7 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 
 	for k, v := range ez.header {
 		for _, v2 := range v {
-			req.Header.Add(k, v2)
+			req.Header.Set(k, v2)
 		}
 	}
 

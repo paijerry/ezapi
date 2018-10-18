@@ -171,6 +171,9 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 		return rspn, err
 	}
 	defer func() {
+		if err == nil {
+			return
+		}
 		if err.Error() == context.DeadlineExceeded.Error() {
 			return
 		}

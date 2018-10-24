@@ -94,8 +94,8 @@ func (ez *EzAPI) Upload(filePath string) *EzAPI {
 }
 
 //TimeOut set timeout
-func (ez *EzAPI) TimeOut(timeout time.Duration) *EzAPI {
-	ez.timeout = timeout
+func (ez *EzAPI) TimeOut(timeout int) *EzAPI {
+	ez.timeout = time.Duration(timeout) * time.Second
 	return ez
 }
 

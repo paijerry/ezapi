@@ -20,6 +20,7 @@ import (
 //EzAPI is the main struct of this package
 type EzAPI struct {
 	header   http.Header
+	raw      []byte
 	form     url.Values
 	urlquery url.Values
 	json     []byte
@@ -55,6 +56,12 @@ func (ez *EzAPI) Header(header http.Header) *EzAPI {
 			ez.header.Add(k, v2)
 		}
 	}
+	return ez
+}
+
+// Raw - text only
+func (ez *EzAPI) Raw(body []byte) *EzAPI {
+	ez.raw = body
 	return ez
 }
 
@@ -119,6 +126,11 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	switch {
 	case method == "GET": // GET
 		req, err = http.NewRequest(method, urlStr, nil)
+		if err != nil {
+			return rspn, err
+		}
+	case ez.raw != nil:
+		req, err = http.NewRequest(method, urlStr, bytes.NewBuffer(ez.raw))
 		if err != nil {
 			return rspn, err
 		}

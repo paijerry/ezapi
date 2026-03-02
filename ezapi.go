@@ -1,9 +1,10 @@
-//Package ezapi can help you call api easier
+// Package ezapi can help you call api easier
 package ezapi
 
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -17,7 +18,7 @@ import (
 	"time"
 )
 
-//EzAPI is the main struct of this package
+// EzAPI is the main struct of this package
 type EzAPI struct {
 	header   http.Header
 	raw      []byte
@@ -30,25 +31,25 @@ type EzAPI struct {
 	filepath []string
 }
 
-//Rspn - contains response data
+// Rspn - contains response data
 type Rspn struct {
 	Header     http.Header
 	Body       []byte
 	StatusCode int
 }
 
-//New create an EzAPI object
+// New create an EzAPI object
 func New() *EzAPI {
 	return &EzAPI{}
 }
 
-//URL set url
+// URL set url
 func (ez *EzAPI) URL(url string) *EzAPI {
 	ez.url = url
 	return ez
 }
 
-//Header add head by a http.Header object
+// Header add head by a http.Header object
 func (ez *EzAPI) Header(header http.Header) *EzAPI {
 	ez.header = http.Header{}
 	for k, v := range header {
@@ -65,13 +66,13 @@ func (ez *EzAPI) Raw(body []byte) *EzAPI {
 	return ez
 }
 
-//Form add form("application/x-www-form-urlencoded") by a url.Values object ("Content-Type", "application/x-www-form-urlencoded")
+// Form add form("application/x-www-form-urlencoded") by a url.Values object ("Content-Type", "application/x-www-form-urlencoded")
 func (ez *EzAPI) Form(form url.Values) *EzAPI {
 	ez.xwww = true
 	return ez.FormData(form)
 }
 
-//FormData add formdata by a url.Values object (no Content-Type)
+// FormData add formdata by a url.Values object (no Content-Type)
 func (ez *EzAPI) FormData(form url.Values) *EzAPI {
 	ez.form = url.Values{}
 	for k, v := range form {
@@ -82,13 +83,13 @@ func (ez *EzAPI) FormData(form url.Values) *EzAPI {
 	return ez
 }
 
-//JSON add json of []byte
+// JSON add json of []byte
 func (ez *EzAPI) JSON(body []byte) *EzAPI {
 	ez.json = body
 	return ez
 }
 
-//URLQuery add urlquery into url
+// URLQuery add urlquery into url
 func (ez *EzAPI) URLQuery(urlquery url.Values) *EzAPI {
 	ez.urlquery = urlquery
 	return ez
@@ -100,13 +101,13 @@ func (ez *EzAPI) Upload(filePath string) *EzAPI {
 	return ez
 }
 
-//TimeOut set timeout
+// TimeOut set timeout
 func (ez *EzAPI) TimeOut(timeout int) *EzAPI {
 	ez.timeout = time.Duration(timeout) * time.Second
 	return ez
 }
 
-//Do the http request
+// Do the http request
 func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	switch {
 	case method == "":
@@ -178,7 +179,32 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	defer cancel()
 	req = req.WithContext(ctx)
 
-	apiResp, err := http.DefaultClient.Do(req)
+	// 1. 設定 TLS 參數
+	tlsConfig := &tls.Config{
+		MinVersion:         tls.VersionTLS12, // 指定最低支援版本
+		InsecureSkipVerify: true,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_AES_128_GCM_SHA256,
+			tls.TLS_AES_256_GCM_SHA384,
+		},
+	}
+
+	// 2. 建立 Transport 並注入 TLSConfig
+	tr := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+
+	// 3. 建立 Client
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   ez.timeout,
+	}
+	apiResp, err := client.Do(req)
 	if err != nil {
 		return rspn, err
 	}

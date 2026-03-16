@@ -18,6 +18,18 @@ import (
 	"time"
 )
 
+var TLSConfig = &tls.Config{
+	MinVersion:         tls.VersionTLS12, // 指定最低支援版本
+	InsecureSkipVerify: true,
+}
+var TR = &http.Transport{
+	TLSClientConfig: TLSConfig,
+}
+
+var Client = &http.Client{
+	Transport: TR,
+}
+
 // EzAPI is the main struct of this package
 type EzAPI struct {
 	header   http.Header
@@ -178,24 +190,12 @@ func (ez *EzAPI) Do(method string) (rspn Rspn, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), ez.timeout)
 	defer cancel()
 	req = req.WithContext(ctx)
-
-	// 1. 設定 TLS 參數
-	tlsConfig := &tls.Config{
-		MinVersion:         tls.VersionTLS12, // 指定最低支援版本
-		InsecureSkipVerify: true,
+	if Client == nil {
+		initClinet()
 	}
 
-	// 2. 建立 Transport 並注入 TLSConfig
-	tr := &http.Transport{
-		TLSClientConfig: tlsConfig,
-	}
-
-	// 3. 建立 Client
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   ez.timeout,
-	}
-	apiResp, err := client.Do(req)
+	Client.Timeout = ez.timeout
+	apiResp, err := Client.Do(req)
 	if err != nil {
 		return rspn, err
 	}
@@ -275,4 +275,19 @@ func formData(form url.Values, fileList []string) (cType string, bodyBuf *bytes.
 	bodyWriter.Close()
 
 	return
+}
+
+func initClinet() *http.Client {
+
+	tlsConfig := &tls.Config{
+		MinVersion:         tls.VersionTLS12, // 指定最低支援版本
+		InsecureSkipVerify: true,
+	}
+	tr := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+
+	return &http.Client{
+		Transport: tr,
+	}
 }

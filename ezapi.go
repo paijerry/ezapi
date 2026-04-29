@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -40,7 +41,15 @@ var (
 		MinVersion: tls.VersionTLS12,
 	}
 	TR = &http.Transport{
-		TLSClientConfig: TLSConfig,
+		TLSClientConfig:     TLSConfig,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
 	}
 	// DefaultClient 是 package 級的預設 client；Do() 不會在執行時修改它的欄位。
 	DefaultClient = &http.Client{
